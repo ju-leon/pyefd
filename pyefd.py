@@ -172,6 +172,17 @@ def calculate_dc_coefficients(contour):
 
 
 def elliptic_fourier_features(contour, order=10, include_rotation=True, include_size=True, include_location=True):
+    """Generate features from a contour using EFD. Features are normailsed as specified.
+
+    :param numpy.ndarray contour: A contour array of size ``[M x 2]``.
+    :param bool include_rotation: If information about the rotation of the contour should be included in the features.
+        Default is ``True``.
+    :param bool size_invariant: If information about the size of the contour should be included in the features.
+        Default is ``True``.
+    :param bool include_location: If information about the location of the contour should be included in the features.
+        Default is ``True``.
+    """
+
     coeffs = elliptic_fourier_descriptors(
         contour, order=order, normalize=False)
 
