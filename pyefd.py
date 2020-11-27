@@ -79,7 +79,7 @@ def elliptic_fourier_descriptors(contour, order=10, normalize=False):
     return coeffs
 
 
-def normalize_efd(coeffs, size_invariant=True):
+def normalize_efd(coeffs, size_invariant=True, include_features=False):
     """Normalizes an array of Fourier coefficients.
 
     See [#a]_ and [#b]_ for details.
@@ -136,9 +136,13 @@ def normalize_efd(coeffs, size_invariant=True):
             )
         ).flatten()
 
+
     if size_invariant:
         # Obtain size-invariance by normalizing.
         coeffs /= np.abs(coeffs[0, 0])
+
+    if include_features:
+        return coeffs, theta_1
 
     return coeffs
 
@@ -159,11 +163,37 @@ def calculate_dc_coefficients(contour):
     xi = np.cumsum(dxy[:, 0]) - (dxy[:, 0] / dt) * t[1:]
     A0 = (1 / T) * np.sum(((dxy[:, 0] / (2 * dt)) * np.diff(t ** 2)) + xi * dt)
     delta = np.cumsum(dxy[:, 1]) - (dxy[:, 1] / dt) * t[1:]
-    C0 = (1 / T) * np.sum(((dxy[:, 1] / (2 * dt)) * np.diff(t ** 2)) + delta * dt)
+    C0 = (1 / T) * np.sum(((dxy[:, 1] / (2 * dt))
+                           * np.diff(t ** 2)) + delta * dt)
 
     # A0 and CO relate to the first point of the contour array as origin.
     # Adding those values to the coefficients to make them relate to true origin.
     return contour[0, 0] + A0, contour[0, 1] + C0
+
+
+def elliptic_fourier_features(contour, order=10, include_rotation=True, include_size=True, include_location=True):
+    coeffs = elliptic_fourier_descriptors(
+        contour, order=order, normalize=False)
+
+    normalized, theta = normalize_efd(
+        coeffs, size_invariant=(not include_size), include_features=True)
+
+    features = normalized.flatten()
+    
+    # Remove entries no longer requiered after removing rotation from features
+    if include_size:
+        features = np.delete(features, [1,2])
+    else:
+        features = np.delete(features, [0,1,2])
+
+    if include_rotation:
+        features = np.append(features, theta)
+
+    if include_location:
+        A0, C0 = calculate_dc_coefficients(contour)
+        features = np.append(features, [A0, C0])
+
+    return features
 
 
 def reconstruct_contour(coeffs, locus=(0, 0), num_points=300):
@@ -187,8 +217,10 @@ def reconstruct_contour(coeffs, locus=(0, 0), num_points=300):
     orders = np.arange(1, orders + 1).reshape(-1, 1)
     order_phases = 2 * orders * np.pi * t.reshape(1, -1)
 
-    xt_all = coeffs[:, 0] * np.cos(order_phases) + coeffs[:, 1] * np.sin(order_phases)
-    yt_all = coeffs[:, 2] * np.cos(order_phases) + coeffs[:, 3] * np.sin(order_phases)
+    xt_all = coeffs[:, 0] * np.cos(order_phases) + \
+        coeffs[:, 1] * np.sin(order_phases)
+    yt_all = coeffs[:, 2] * np.cos(order_phases) + \
+        coeffs[:, 3] * np.sin(order_phases)
 
     xt_all = xt_all.sum(axis=0)
     yt_all = yt_all.sum(axis=0)
