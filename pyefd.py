@@ -136,7 +136,6 @@ def normalize_efd(coeffs, size_invariant=True, include_features=False):
             )
         ).flatten()
 
-
     if size_invariant:
         # Obtain size-invariance by normalizing.
         coeffs /= np.abs(coeffs[0, 0])
@@ -190,12 +189,12 @@ def elliptic_fourier_features(contour, order=10, include_rotation=True, include_
         coeffs, size_invariant=(not include_size), include_features=True)
 
     features = normalized.flatten()
-    
+
     # Remove entries no longer requiered after removing rotation from features
     if include_size:
-        features = np.delete(features, [1,2])
+        features = np.delete(features, [1, 2])
     else:
-        features = np.delete(features, [0,1,2])
+        features = np.delete(features, [0, 1, 2])
 
     if include_rotation:
         features = np.append(features, theta)
@@ -205,6 +204,38 @@ def elliptic_fourier_features(contour, order=10, include_rotation=True, include_
         features = np.append(features, [A0, C0])
 
     return features
+
+
+def reconstruct_contour_from_features(features, order=10, include_rotation=True, include_size=True, include_location=True):
+    """Returns the contour specified by the features. If rotation, location are specified, these paramters are additionally returned
+
+    """
+    coeffs = features
+
+    if include_size:
+        coeffs = np.insert(coeffs, [1, 1], [0, 0])
+    else:
+        coeffs = np.insert(coeffs, [0, 0, 0], [1, 0, 0])
+
+    if include_location:
+        [A0, C0] = coeffs[-2:]
+        coeffs = coeffs[:-2]
+
+    if include_rotation:
+        theta = coeffs[-1:]
+        coeffs = coeffs[:-1]
+
+    coeffs = coeffs.reshape(order, 4)
+    if include_location and include_rotation:
+        return coeffs, theta, [A0, C0]
+
+    if include_rotation:
+        return coeffs, theta
+
+    if include_location:
+        return coeffs, [A0, C0]
+
+    return coeffs
 
 
 def reconstruct_contour(coeffs, locus=(0, 0), num_points=300):
